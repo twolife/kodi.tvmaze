@@ -40,6 +40,8 @@ matrix:
       deploy:
         - provider: script
           script: submit-addon -r repo-scrapers -b $BRANCH -s --pull-request $ADDON_ID
+          on:
+            branch: matrix
 
 notifications:
   email: false
