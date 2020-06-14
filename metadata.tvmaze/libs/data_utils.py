@@ -85,11 +85,11 @@ def _set_cast(show_info, list_item):
 
 def _get_credits(show_info):
     """Extract show creator(s) from show info"""
-    credits = []
+    credits_ = []
     for item in show_info['_embedded']['crew']:
         if item['type'].lower() == 'creator':
-            credits.append(item['person']['name'])
-    return credits
+            credits_.append(item['person']['name'])
+    return credits_
 
 
 def _set_unique_ids(show_info, list_item):
