@@ -24,8 +24,16 @@ import sys
 from collections import OrderedDict, namedtuple
 
 import six
+from six import PY2
+import os
+import xbmcvfs
 
-from .utils import safe_get
+try:
+    from xbmcvfs import translatePath
+except ImportError:
+    from xbmc import translatePath
+
+from .utils import ADDON, safe_get
 
 try:
     from typing import Optional, Text, Dict, List, Any  # pylint: disable=unused-import
@@ -53,8 +61,20 @@ CLEAN_PLOT_REPLACEMENTS = (
 
 UrlParseResult = namedtuple('UrlParseResult', ['provider', 'show_id'])
 
+def _get_reorder_directory():  # pylint: disable=missing-docstring
+    # type: () -> Text
+    profile_dir = translatePath(ADDON.getAddonInfo('profile'))
+    if PY2:
+        profile_dir = profile_dir.decode('utf-8')
+    reorder_dir = os.path.join(profile_dir, 'reorder')
+    if not xbmcvfs.exists(reorder_dir):
+        xbmcvfs.mkdir(reorder_dir)
+    return reorder_dir
 
-def process_episode_list(episode_list):
+reorder_DIR = _get_reorder_directory()  # type: Text
+
+
+def process_episode_list(show_info, episode_list):
     # type: (List[InfoType]) -> Dict[Text, InfoType]
     """Convert embedded episode list to a dict"""
     if sys.version_info >= (3, 6):
@@ -63,7 +83,19 @@ def process_episode_list(episode_list):
         ordered_dict_class = OrderedDict
     processed_episodes = ordered_dict_class()
     specials_list = []
+
+    """ Load external re-ordering """
+    reorder_filename = os.path.join(reorder_DIR, "{}.dict".format(show_info['id']))
+    reorder_dict = {}
+    if os.path.exists(reorder_filename):
+        with open(reorder_filename,'r') as reorder_file:
+            reorder_dict = eval(reorder_file.read())
+
     for episode in episode_list:
+        if episode['id'] in reorder_dict:
+            episode['season'] = reorder_dict[episode['id']]['season']
+            episode['number'] = reorder_dict[episode['id']]['number']
+
         # xbmc/video/VideoInfoScanner.cpp ~ line 1010
         # "episode 0 with non-zero season is valid! (e.g. prequel episode)"
         if episode['number'] is not None or episode.get('type') == 'significant_special':
